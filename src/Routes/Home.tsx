@@ -3,7 +3,9 @@ import styled from 'styled-components';
 import { useQuery } from 'react-query';
 import { getMovies, IGetMoviesResult } from '../api';
 import { makeImagePath } from '../utilities';
-import { motion,AnimatePresence } from 'framer-motion';
+import { motion,AnimatePresence,useViewportScroll } from 'framer-motion';
+import { useMatch, useNavigate } from 'react-router-dom';
+
 
 const Wrapper = styled.div`
   background-color: black;
@@ -57,12 +59,22 @@ const Box = styled(motion.div)<{bgphoto:string}>`
   background-position: center center;
   height: 200px;
   font-size:66px;
+  cursor: pointer;
   &:first-child{
     transform-origin:center left;
   }
   &:last-child{
     transform-origin: center right;
   }
+`;
+
+const Overlay = styled(motion.div)`
+  position:fixed;
+  top:0;
+  width:100%;
+  height:100%;
+  background-color: rgba(0,0,0,0.7);
+  opacity: 0;
 `;
 
 const Info = styled(motion.div)`
@@ -76,6 +88,39 @@ const Info = styled(motion.div)`
     text-align: center;
     font-size:18px;
   }
+`;
+
+const BigMovie = styled(motion.div)`
+  position:absolute;
+  width:40vw;
+  height:80vh;
+  left:0;
+  right:0;
+  margin:0 auto;
+  background-color: ${props=>props.theme.black.lighter};
+  border-radius: 15px;
+  overflow: hidden;
+`;
+
+const BigCover= styled.img`
+  width:100%;
+  background-size: cover;
+  background-position:center center;
+  height: 400px;
+`;
+
+const BigTitle = styled.h3`
+  color:${props=>props.theme.white.lighter};
+  text-align: center;
+  font-size:36px;
+  position:relative;
+  top:-60px;
+  font-size:45px;
+`;
+
+const BigOverview = styled.p`
+  padding:20px;
+  color:${props=>props.theme.white.lighter};
 `;
 
 const rowVariants = {
@@ -118,10 +163,14 @@ const infoVariants = {
 
   const offset = 6;
 export default function Home() {
+  const navigate =  useNavigate() //react-router-dom v6부턴 history => Navagate로 변경
+  const bigMovieMatch = useMatch("/movies/:movieId");
+  console.log(bigMovieMatch)
+  const  {scrollY} = useViewportScroll();
   const {data, isLoading} = useQuery<IGetMoviesResult>(["movies","nowPlaying"], getMovies);
   const [index,setIndex] = useState(0);
   const [leaving,setLeaving] = useState(false);
-  console.log(data);
+  
   const increaseIndex = () => {
     if(data){
       if(leaving) return;
@@ -132,7 +181,16 @@ export default function Home() {
     }
   };
   const toggleLeaving = () => setLeaving(!leaving);
-  
+  const onBoxClicked = (movieId:number)=>{
+    navigate(`/movies/${movieId}`)
+  }
+
+  const onOverlayClick = ()=>{
+    navigate('/')
+  }
+
+  const clickedMovie =  data?.results.find(movie => movie.id+"" === bigMovieMatch?.params.movieId)
+  console.log(clickedMovie)
   return (
     <Wrapper>
       {isLoading?
@@ -159,7 +217,9 @@ export default function Home() {
                 {data?.results
                   .slice(1)
                   .slice(offset*index,offset*index+offset).map((movie)=>(
-                  <Box 
+                  <Box
+                    layoutId={movie.id+""} 
+                    onClick={()=>onBoxClicked(movie.id)}
                     key={movie.id}
                     variants={boxVariants}
                     whileHover="hover"
@@ -174,6 +234,30 @@ export default function Home() {
               </Row>
             </AnimatePresence>
           </Slider>
+          <AnimatePresence>
+            {bigMovieMatch?
+              <>
+                <Overlay 
+                  onClick={onOverlayClick} 
+                  animate={{opacity:1}}
+                  exit={{opacity:0}}
+                />
+                <BigMovie
+                  layoutId={bigMovieMatch?.params.movieId}
+                  style={{top:scrollY.get() + 100}}
+                >
+                  {clickedMovie && 
+                  <>
+                    <BigCover 
+                      style={{backgroundImage:`linear-gradient(to top,black,transparent), url(${makeImagePath(clickedMovie.backdrop_path,"w500")})`}} />
+                    <BigTitle>{clickedMovie.title}</BigTitle>
+                    <BigOverview>{clickedMovie.overview}</BigOverview>
+                  </>}
+                </BigMovie>
+              </>
+              :null
+            }
+          </AnimatePresence> 
         </>
        )
       }
@@ -183,4 +267,3 @@ export default function Home() {
 
 
 
-// 1Rr5SrvHxMXHu5RjKpaMba8VTzi.jpg

@@ -110,7 +110,7 @@ const navVariants = {
 
 
 export default function Header() {
-  const homeMatch = useMatch("/");
+  const homeMatch = useMatch("/*");
   const tvMatch = useMatch("/tv");
   const  [searchOpen,setSearchOpen] = useState(false);
   const navAnimation = useAnimation();
